@@ -32,10 +32,10 @@ cacPerms=775;
 # (via the -c switch) you want the .cac files written to upon creation.  
 # Otherwise, they are written to the temporary directory used to do the 
 # conversions
-CACHE_DIR='/home/coolgroup/gliderData/glider_cache';
+CACHE_DIR='/home/coolgroup/gliderData/deployments-meta/cac';
 
 # Path to the WRC executables (dbd2asc, dba2_orig_matlab, etc)
-EXE_DIR='/home/kerfoot/bin/twrc';
+EXE_DIR='/home/coolgroup/gliderData/deployments-meta/linux-bin';
 
 # Soure and destination default to current directory
 dbdRoot=$(pwd);
@@ -83,7 +83,9 @@ DESCRIPTION
         science controller data file when it arrives.  USE WITH CAUTION!
 
     -c
-        User specified location for writing .cac files.
+        User specified location for writing .cac files.  Default location is:
+            
+            $CACHE_DIR
 
     -m
         Output matlab formatted ascii files instead of dba format.
