@@ -40,8 +40,8 @@ do
         "d")
             WRITE_DIR=$OPTARG;
             ;;
-        "*")
-            echo -e "Invalid option specified: $option\n$USAGE";
+        "?")
+            echo -e "$USAGE";
             exit 1;
             ;;
     esac
@@ -62,7 +62,7 @@ do
     # Get extension
     ext=${f:(-4)};
     # Must be capitalized
-    [ "$ext" != '.CAC' ] && continue;
+    [ "$ext" != '.CAC' -a "$ext" != '.cac' ] && continue;
 
     # Get the path to the file
     p=$(dirname $f);
@@ -74,11 +74,25 @@ do
     [ -z "$lc" ] && continue;
 
     # Create the copy using the lower case name
-    if [ -n "WRITE_DIR" ]
+    if [ -n "$WRITE_DIR" ]
     then
-        cp $f ${WRITE_DIR}/${lc};
+        destFile="${WRITE_DIR}/${lc}";
     else
-        cp $f ${p}/${lc};
+        destFile="${p}/${lc}";
     fi
+
+    if [ -f "$destFile" ]
+    then
+	    oldSize=$(stat --format=%s $f);
+	    newSize=$(stat --format=%s $destFile);
+        if [ "$oldSize" -eq "$newSize" ]
+        then
+            continue;
+        fi
+    fi
+
+    echo "Writing $destFile";
+
+    cp $f $destFile;
 
 done
