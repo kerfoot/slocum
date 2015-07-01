@@ -5,7 +5,7 @@ Collection of miscellaneous files and utilities for management of Slocum
 glider data sets
 
 Contents, discussion and usage can be found
-[here](http://github.com/kerfoot/slocum).
+[here](http://github.com/kerfoot/slocum/wiki).
 
     John Kerfoot
     Coastal Ocean Observation Lab
