@@ -20,7 +20,7 @@ NAME
     $app - write lower cased slocum glider dbd .cac files
 
 SYNOPSIS
-    $app [h]
+    $app [h] file1[ file2 ...]
 
 DESCRIPTION
     Create lower cased .cac files used to decode slocum binary *.*bd files
