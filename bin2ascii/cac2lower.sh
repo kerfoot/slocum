@@ -24,8 +24,13 @@ SYNOPSIS
 
 DESCRIPTION
     Create lower cased .cac files used to decode slocum binary *.*bd files
+
     -h
         show help message
+
+    -d
+        specify an alternate destination directory
+
 ";
 
 # Default values for options
