@@ -1,0 +1,16 @@
+s: T    0    0 4 sci_m_disk_free mbytes
+s: T    1    1 4 sci_m_disk_usage mbytes
+s: T    2    2 4 sci_m_free_heap bytes
+s: T    3    3 4 sci_m_min_free_heap bytes
+s: T    4    4 4 sci_m_min_spare_heap bytes
+s: T    5    5 4 sci_m_present_secs_into_mission sec
+s: T    6    6 8 sci_m_present_time timestamp
+s: T    7    7 1 sci_m_science_on bool
+s: T    8    8 4 sci_m_spare_heap bytes
+s: T    9    9 4 sci_reqd_heartbeat secs
+s: T   10   10 4 sci_software_ver nodim
+s: T   11   11 1 sci_wants_comms bool
+s: T   12   12 1 sci_wants_surface enum
+s: T   13   13 4 sci_water_pressure bar
+s: T   14   14 4 sci_x_disk_files_removed nodim
+s: T   15   15 4 sci_x_sent_data_files nodim
