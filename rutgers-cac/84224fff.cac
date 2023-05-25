@@ -1,0 +1,3 @@
+s: T    0    0 4 sci_reqd_heartbeat secs
+s: T    1    1 1 sci_sbmb_hw_ver enum
+s: T    2    2 4 sci_software_ver nodim
