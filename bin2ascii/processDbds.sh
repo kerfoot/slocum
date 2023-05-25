@@ -1,47 +1,13 @@
-#! /bin/bash --
-#
-# processDbds.sh [hdrf] SOURCEDIR DESTDIR
-#
-# Convert and merge all binary *.[demnst]bd files in SOURCEDIR and write the 
-# corresponding DBA data files to DESTDIR.  If present, the following files 
-# pairs are merged:
-#
-#   dbd/ebd
-#   mbd/nbd
-#   sbd/tbd
-#
-# An exit status of 1 is returned if any part of the conversion or move fails.
-# Otherwise, exit status of 0.
-#
-# ============================================================================
-# $RCSfile: processDbds.sh,v $
-# $Source: /home/kerfoot/cvsroot/glider/bash/processDbds.sh,v $
-# $Revision: 1.6 $
-# $Date: 2012/07/25 21:24:28 $
-# $Author: kerfoot $
-# $Name:  $
-# ============================================================================
-#
+#! /bin/bash -x
 
 PATH=/bin:/usr/bin
 
 # Permissions for cac files
 cacPerms=775;
 
-# Location of cache files - if commented out, you must specify the location
-# (via the -c switch) you want the .cac files written to upon creation.  
-# Otherwise, they are written to the temporary directory used to do the 
-# conversions
-CACHE_DIR='/home/coolgroup/gliderData/deployments-meta/cac';
-
-# Path to the WRC executables (dbd2asc, dba2_orig_matlab, etc)
-EXE_DIR='/home/coolgroup/gliderData/deployments-meta/linux-bin';
-
-# Soure and destination default to current directory
-dbdRoot=$(pwd);
-ascDest=$(pwd);
-
-app=$(basename $0);
+script=$(realpath $0);
+app=$(basename $script);
+work_path=$(dirname $script);
 
 # Usage message
 USAGE="
@@ -51,7 +17,7 @@ NAME
     $app - Convert and merge Slocum glider binary files
 
 SYNOPSIS
-    $app [hdrf] SOURCEDIR DESTDIR
+    $app [hxm] [-c DIRECTORY] [-e DIRECTORY] [-f FILE] SOURCEDIR DESTDIR
 
 DESCRIPTION
     Convert and merge all binary *.[demnst]bd files in SOURCEDIR and write the
@@ -83,17 +49,21 @@ DESCRIPTION
         science controller data file when it arrives.  USE WITH CAUTION!
 
     -c
-        User specified location for writing .cac files.  Default location is:
-            
-            $CACHE_DIR
+        User specified location for writing .cac files
+
+    -e
+        User specified location containing the slocum binary executables
 
     -m
         Output matlab formatted ascii files instead of dba format.
 
+    -x
+        Test configuration location and exist
+
 ";
 
 # Process options
-while getopts hrf:c:m option
+while getopts hrf:c:e:mx option
 do
 
     case "$option" in
@@ -113,8 +83,14 @@ do
         "c")
             CACHE_DIR=$OPTARG;
             ;;
+        "e")
+            EXE_DIR=$OPTARG;
+            ;;
         "m")
             matlab=1;
+            ;;
+        "x")
+            debug=1;
             ;;
         "?")
             exit 1;
@@ -129,132 +105,182 @@ done
 # Remove options from ARGV
 shift $((OPTIND-1));
 
-EXIT_STATUS=1;
-
-# Validate executables location
-if [ ! -d "$EXE_DIR" ]
-then
-    echo "Invalid exe dir: $EXE_DIR" 1>&2;
-    exit $EXIT_STATUS;
-fi
-# Make sure the required TWRC utilities are available
-dbd2asc="${EXE_DIR}/dbd2asc";
-if [ ! -x "$dbd2asc" ]
-then
-    echo "Missing utility: $dbd2asc" >&2;
-    exit $EXIT_STATUS;
-fi
-dbaMerge="${EXE_DIR}/dba_merge";
-if [ ! -x "$dbaMerge" ]
-then
-    echo "Missing utility: $dbdMerge" >&2;
-    exit $EXIT_STATUS;
-fi
-dba2matlab="${EXE_DIR}/dba2_orig_matlab";
-if [ ! -x "$dba2matlab" ]
-then
-    echo "Missing utility: $dba2matlab" >&2;
-    exit $EXIT_STATUS;
-fi
-dba_sensor_filter="${EXE_DIR}/dba_sensor_filter";
-if [ ! -x "$dba_sensor_filter" ]
-then
-    echo "Missing utility: $dba_sensor_filter" >&2;
-    exit $EXIT_STATUS;
-fi
-
-# Validate source and destination directories
-if [ ! -d "$dbdRoot" ]
-then
-    echo "Invalid source dir : $dbdRoot!" >&2;
-    echo "Usage: $0 [-hdr] source_directory [destination_directory]" >&2
-    exit $EXIT_STATUS;
-fi
-if [ ! -d "$ascDest" ]
-then
-    echo "Invalid destination: $ascDest!" >&2;
-    echo "Usage: $0 [-hdr] source_directory [destination_directory]" >&2
-    exit $EXIT_STATUS;
-fi
+logging_lib="${work_path}/../logging.sh";
+. $logging_lib;
+[ "$?" -ne 0 ] && exit 1;
 
 # Display usage if no files are specified
 if [ "$#" -eq 0 ]
 then
-    echo "Please specify an input directory.";
-    echo "Usage: $0 [-hdr] source_directory [destination_directory]" >&2
-    exit $EXIT_STATUS;
+    error_msg "Please specify an input directory.";
+    echo "$USAGE";
+    exit 1;
 elif [ "$#" -eq 1 ]
 then
-    dbdRoot=$1;
-    ascDest=$1;
+    dbdRoot=$(realpath $1);
+    ascDest=$(realpath $1);
 elif [ "$#" -gt 1 ]
 then
-    dbdRoot=$1;
-    ascDest=$2;
+    dbdRoot=$(realpath $1);
+    ascDest=$(realpath $2);
 fi
 
 # Validate source ($dbdRoot) and destination ($ascDest)
 if [ ! -d "$dbdRoot" ]
 then
-    echo "Invalid source directory: $dbdRoot" >&2;
-    exit $EXIT_STATUS;
+    error_msg "Invalid source directory: $dbdRoot" >&2;
+    exit 1;
 fi
 if [ ! -d "$ascDest" ]
 then
-    echo "Invalid destination directory: $ascDest" >&2;
-    exit $EXIT_STATUS;
+    error_msg "Invalid destination directory: $ascDest" >&2;
+    exit 1;
 fi
 
-# Get absolute paths for the source and destination directory
-dbdRoot=$(readlink -e $dbdRoot);
-ascDest=$(readlink -e $ascDest);
-
 # Display fully qualified path
-echo "Source     : $dbdRoot";
-echo "Destination: $ascDest";
+info_msg "Source     : $dbdRoot";
+info_msg "Destination: $ascDest";
+
+# Location of cache files
+if [ -z "$CACHE_DIR" ]
+then
+    info_msg 'No .cac location specified.';
+    info_msg 'Checking for existence of $SLOCUM_CAC_ROOT environment variable';
+    if [ -z "$SLOCUM_CAC_ROOT" ]
+    then
+        CACHE_DIR=$(realpath $(pwd));
+        warn_msg '$SLOCUM_CAC_ROOT not set. Setting to current working directory';
+    else
+        info_msg 'Setting .cac location to $SLOCUM_CAC_ROOT';
+        CACHE_DIR=$SLOCUM_CAC_ROOT;
+    fi
+fi
+
+if [ ! -d "$CACHE_DIR" ]
+then
+    error_msg "Invalid .cac location specified: $CACHE-DIR" >&2;
+    invalid=1;
+fi
+
+# Location of slocum executable files
+if [ -z "$EXE_DIR" ]
+then
+    info_msg 'No slocum executables location specified.';
+    info_msg 'Checking for existence of $SLOCUM_EXE_ROOT environment variable';
+    if [ -z "$SLOCUM_EXE_ROOT" ]
+    then
+        EXE_DIR=$(realpath $(pwd));
+        warn_msg '$SLOCUM_EXE_ROOT not set.'
+        info_msg "Setting to current working directory: $work_path";
+    else
+        info_msg "Setting .exe location to $SLOCUM_EXE_ROOT: $SLOCUM_EXE_ROOT";
+        EXE_DIR=$SLOCUM_EXE_ROOT;
+    fi
+fi
+
+if [ ! -d "$EXE_DIR" ]
+then
+    error_msg "Invalid .exe location specified: $EXE_DIR" >&2;
+    invalid=1;
+fi
+
+info_msg ".cac location: $CACHE_DIR";
+info_msg ".exe location: $EXE_DIR";
+
+if [ -n "$invalid" ]
+then
+    error_msg 'Invalid configuration';
+    exit 1;
+fi
+
+# Soure and destination default to current directory
+dbdRoot=$work_path;
+ascDest=$work_path;
+
+# Make sure the required TWRC utilities are available
+dbd2asc="${EXE_DIR}/dbd2asc";
+if [ ! -f "$dbd2asc" ]
+then
+    error_msg "Executable not found: $dbd2asc" >&2;
+    invalid=1;
+elif [ ! -x "$dbd2asc" ]
+then
+    error_msg "Non-executable utility: $dbd2asc" >&2;
+    warn_msg "Use chmod +x $dbd2asc" >&2;
+    invalid=1;
+fi
+dbaMerge="${EXE_DIR}/dba_merge";
+if [ ! -f "$dbaMerge" ]
+then
+    error_msg "Executable not found: $dbaMerge" >&2;
+    invalid=1;
+elif [ ! -x "$dbaMerge" ]
+then
+    error_msg "Non-executable utility: $dbaMerge" >&2;
+    warn_msg "Use chmod +x $dbaMerge" >&2;
+    invalid=1;
+fi
+dba2matlab="${EXE_DIR}/dba2_orig_matlab";
+if [ ! -f "$dba2matlab" ]
+then
+    error_msg "Executable not found: $dba2matlab" >&2;
+    invalid=1;
+elif [ ! -x "$dba2matlab" ]
+then
+    error_msg "Non-executable utility: $dba2matlab" >&2;
+    warn_msg "Use chmod +x $dba2matlab" >&2;
+    invalid=1;
+fi
+dba_sensor_filter="${EXE_DIR}/dba_sensor_filter";
+if [ ! -f "$dba_sensor_filter" ]
+then
+    error_msg "Executable not found: $dba_sensor_filter" >&2;
+    invalid=1;
+elif [ ! -x "$dba_sensor_filter" ]
+then
+    error_msg "Non-executable utility: $dba_sensor_filter" >&2;
+    warn_msg "Use chmod +x $dba_sensor_filter" >&2;
+    invalid=1;
+fi
 
 # If specified, validate the sensor list to filter by
 if [ -n "$sensorFilter" ]
 then
     if [ ! -f "$sensorFilter" ]
     then
-        echo "Invalid sensor filter list: $sensorFilter!" >&2;
-        exit $EXIT_STATUS;
+        error_msg "Invalid sensor filter list: $sensorFilter!" >&2;
+        exit 1;
     else
         # Get absolute path to the sensor filter file if it exists
-        sensorFilter=$(readlink -e $sensorFilter);
-        echo "dba filter : $sensorFilter";
+        sensorFilter=$(realpath $sensorFilter);
+        info_msg "dba filter : $sensorFilter";
     fi
 fi
+
+if [ -n "$invalid" ]
+then
+    error_msg "Invalid executables configuration: $EXE_DIR";
+    exit 1;
+fi
+
+info_msg "Configuration looks good";
+
+# Exit after checking configuration if -x
+[ -n "$debug" ] && exit 0;
 
 # Make a temporary directory for writing the intermediate dba files and
 # (optionally) doing the dba->matlab conversions
 tmpDir=$(mktemp -d -t ${app}.XXXXXXXXXX);
 if [ "$?" -ne 0 ]
 then
-    echo "Exiting: Can't create temporary dbd directory" >&2;
-    exit $EXIT_STATUS;
+    error_msg "Exiting: Can't create temporary dbd directory" >&2;
+    exit 1;
 fi
-echo "Changing to temporary directory: $tmpDir";
+info_msg "Changing to temporary directory: $tmpDir";
 # Change to temporary directory
 cd $tmpDir > /dev/null;
 # Remove $tmpDir if SIG
 trap "{ rm -Rf $tmpDir; exit 255; }" SIGHUP SIGINT SIGKILL SIGTERM SIGSTOP;
-
-# If the location of the .CAC files has not been set, dbd2asc creates a
-# directory, 'cache', in the curret working directory.  In this case, we'll
-# create this directory in the $dbdRoot directory and explicitly set $CACHE_DIR
-# to this location
-if [ -z "$CACHE_DIR" -o ! -d "$CACHE_DIR" ]
-then
-    CACHE_DIR="${dbdRoot}/cache";
-    if [ ! -d "$CACHE_DIR" ]
-    then
-        mkdir -m 775 $CACHE_DIR;
-        [ "$?" -ne 0 ] && exit $EXIT_STATUS;
-    fi
-fi
-echo "CAC file location: $CACHE_DIR";
 
 # Convert each file individually and move the created files to the location of
 # the source binary files
