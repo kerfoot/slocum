@@ -1,13 +1,11 @@
-#! /bin/bash -x
+#! /bin/bash --
 
 PATH=/bin:/usr/bin
 
 # Permissions for cac files
 cacPerms=775;
 
-script=$(realpath $0);
-app=$(basename $script);
-work_path=$(dirname $script);
+app=$(basename $0);
 
 # Usage message
 USAGE="
@@ -105,6 +103,8 @@ done
 # Remove options from ARGV
 shift $((OPTIND-1));
 
+script=$(realpath $0);
+work_path=$(dirname $script);
 logging_lib="${work_path}/../logging.sh";
 . $logging_lib;
 [ "$?" -ne 0 ] && exit 1;
@@ -193,9 +193,9 @@ then
     exit 1;
 fi
 
-# Soure and destination default to current directory
-dbdRoot=$work_path;
-ascDest=$work_path;
+## Soure and destination default to current directory
+#dbdRoot=$work_path;
+#ascDest=$work_path;
 
 # Make sure the required TWRC utilities are available
 dbd2asc="${EXE_DIR}/dbd2asc";
