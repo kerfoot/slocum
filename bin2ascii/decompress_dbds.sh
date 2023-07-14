@@ -130,7 +130,9 @@ do
         -a "$ext" != 'mcd' \
         -a "$ext" != 'ncd' \
         -a "$ext" != 'scd' \
-        -a "$ext" != 'tcd' ]
+        -a "$ext" != 'tcd' \
+        -a "$ext" != 'ncg' \
+        -a "$ext" != 'mcg' ]
     then
         warn_msg "File does not appear to be compressed: $cf";
         continue;
@@ -139,7 +141,12 @@ do
     info_msg "Compressed file  : $cf";
 
     # Replace 'c' with 'b' in the extension
-    new_ext=$(echo $ext | tr c b);
+    if [ "$ext" == 'mcg' -o "$ext" == 'ncg' ]
+    then
+        new_ext=$(echo $ext | tr c l);
+    else
+        new_ext=$(echo $ext | tr c b);
+    fi
 
     # Path to the compressed file
     cf_dir=$(dirname $cf);
