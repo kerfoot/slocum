@@ -4,7 +4,7 @@ script=$(realpath $0);
 app=$(basename $script);
 workpath=$(dirname $script);
 
-PATH=/bin:/usr/bin:${workpath}/..;
+PATH=/bin:/usr/bin:${HOME}/code;
 
 # Default values for options
 
@@ -172,7 +172,7 @@ do
         continue;
     fi
 
-    dc_count=$(( count+1 ));
+    dc_count=$(( dc_count+1 ));
     info_msg "Decompressed file: $df";         
 
 done
